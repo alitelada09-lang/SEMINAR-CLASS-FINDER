@@ -37,11 +37,11 @@
                 loadParticipants();
             }, []);
 
-            const loadParticipants = async () => {
+            const loadParticipants = () => {
                 try {
-                    const result = await window.storage.get('seminar-participants');
-                    if (result && result.value) {
-                        setParticipants(JSON.parse(result.value));
+                    const stored = localStorage.getItem('seminar-participants');
+                    if (stored) {
+                        setParticipants(JSON.parse(stored));
                     }
                 } catch (error) {
                     console.log('No existing data found');
@@ -50,9 +50,9 @@
                 }
             };
 
-            const saveParticipants = async (data) => {
+            const saveParticipants = (data) => {
                 try {
-                    await window.storage.set('seminar-participants', JSON.stringify(data));
+                    localStorage.setItem('seminar-participants', JSON.stringify(data));
                     setParticipants(data);
                 } catch (error) {
                     alert('Error saving data: ' + error.message);
@@ -143,10 +143,10 @@
                 }
             };
 
-            const clearAllData = async () => {
+            const clearAllData = () => {
                 if (confirm('Are you sure you want to delete all participant data? This cannot be undone.')) {
                     try {
-                        await window.storage.delete('seminar-participants');
+                        localStorage.removeItem('seminar-participants');
                         setParticipants([]);
                         alert('All data cleared successfully');
                     } catch (error) {
