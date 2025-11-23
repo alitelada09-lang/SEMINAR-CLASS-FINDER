@@ -37,26 +37,34 @@
                 loadParticipants();
             }, []);
 
-            const loadParticipants = () => {
+            const loadParticipants = async () => {
                 try {
-                    const stored = localStorage.getItem('seminar-participants');
-                    if (stored) {
-                        setParticipants(JSON.parse(stored));
+                    // Try to load from the participants.json file on GitHub
+                    const response = await fetch('participants.json');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setParticipants(data);
+                    } else {
+                        // If file doesn't exist yet, start with empty array
+                        setParticipants([]);
                     }
                 } catch (error) {
-                    console.log('No existing data found');
+                    console.log('No participants file found yet');
+                    setParticipants([]);
                 } finally {
                     setLoading(false);
                 }
             };
 
-            const saveParticipants = (data) => {
-                try {
-                    localStorage.setItem('seminar-participants', JSON.stringify(data));
-                    setParticipants(data);
-                } catch (error) {
-                    alert('Error saving data: ' + error.message);
-                }
+            const generateJsonFile = (data) => {
+                const jsonString = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'participants.json';
+                a.click();
+                window.URL.revokeObjectURL(url);
             };
 
             const handleSearch = () => {
@@ -114,8 +122,9 @@
                     return;
                 }
 
-                saveParticipants(data);
-                alert(`Successfully uploaded ${data.length} participants!`);
+                setParticipants(data);
+                generateJsonFile(data);
+                alert(`✓ Successfully processed ${data.length} participants!\n\n📥 A file named "participants.json" has been downloaded.\n\n⚠️ IMPORTANT: Upload this file to your GitHub repository to make it accessible to everyone.`);
             };
 
             const handleManualAdd = () => {
@@ -137,21 +146,19 @@
                 });
 
                 if (newParticipants.length > 0) {
-                    saveParticipants([...participants, ...newParticipants]);
+                    const updatedData = [...participants, ...newParticipants];
+                    setParticipants(updatedData);
+                    generateJsonFile(updatedData);
                     setCsvData('');
-                    alert(`Added ${newParticipants.length} participants!`);
+                    alert(`✓ Added ${newParticipants.length} participants!\n\n📥 A file named "participants.json" has been downloaded.\n\n⚠️ IMPORTANT: Upload this file to your GitHub repository to update the participant list.`);
                 }
             };
 
             const clearAllData = () => {
                 if (confirm('Are you sure you want to delete all participant data? This cannot be undone.')) {
-                    try {
-                        localStorage.removeItem('seminar-participants');
-                        setParticipants([]);
-                        alert('All data cleared successfully');
-                    } catch (error) {
-                        alert('Error clearing data: ' + error.message);
-                    }
+                    setParticipants([]);
+                    generateJsonFile([]);
+                    alert('✓ All data cleared!\n\n📥 An empty "participants.json" file has been downloaded.\n\n⚠️ Upload this file to GitHub to update the live site.');
                 }
             };
 
@@ -163,6 +170,11 @@
                 a.href = url;
                 a.download = 'participant_template.csv';
                 a.click();
+            };
+
+            const downloadCurrentData = () => {
+                generateJsonFile(participants);
+                alert('📥 Current participant data downloaded as "participants.json"');
             };
 
             if (loading) {
@@ -287,6 +299,16 @@
                                     👥 Admin Panel
                                 </h2>
 
+                                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
+                                    <h3 className="font-semibold text-blue-800 mb-2">📌 How It Works:</h3>
+                                    <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+                                        <li>Upload a CSV or add participants manually below</li>
+                                        <li>A <strong>participants.json</strong> file will download automatically</li>
+                                        <li>Upload that JSON file to your GitHub repository</li>
+                                        <li>Wait 2-3 minutes for changes to go live</li>
+                                    </ol>
+                                </div>
+
                                 <div className="space-y-6">
                                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-400 transition-colors">
                                         <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -339,12 +361,20 @@
                                             <h3 className="text-lg font-semibold text-gray-700">
                                                 Current Participants ({participants.length})
                                             </h3>
-                                            <button
-                                                onClick={clearAllData}
-                                                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2"
-                                            >
-                                                🗑️ Clear All
-                                            </button>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={downloadCurrentData}
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2 text-sm"
+                                                >
+                                                    📥 Download JSON
+                                                </button>
+                                                <button
+                                                    onClick={clearAllData}
+                                                    className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center gap-2 text-sm"
+                                                >
+                                                    🗑️ Clear All
+                                                </button>
+                                            </div>
                                         </div>
                                         {participants.length > 0 ? (
                                             <div className="max-h-96 overflow-y-auto">
